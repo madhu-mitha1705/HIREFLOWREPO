@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "HireFlow",
+    "slug": "HireFlow",
+    "scheme": "HireFlow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.hireflow.app",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow HireFlow to access your media library to select video resumes.",
+          "cameraPermission": "Allow HireFlow to use your camera to record video resumes.",
+          "microphonePermission": "Allow HireFlow to use your microphone while recording video resumes."
+        }
+      ]
+    ]
+  }
+}
