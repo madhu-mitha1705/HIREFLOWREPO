@@ -16,7 +16,6 @@ import {
 } from "firebase/firestore";
 import {
   createUserWithEmailAndPassword,
-  fetchSignInMethodsForEmail,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
@@ -41,6 +40,38 @@ const localApplicationsKey = "hireflow_local_applications_v1";
 const toArray = (snapshot) => snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 const normalizeEmail = (email = "") => email.trim().toLowerCase();
 const isRemoteUrl = (value = "") => /^https?:\/\//i.test(String(value || "").trim());
+const normalizeJobText = (value = "") => String(value || "").trim().toLowerCase();
+const normalizeJobSkills = (skills = []) =>
+  Array.from(
+    new Set(
+      (Array.isArray(skills) ? skills : [])
+        .map((item) => normalizeJobText(item))
+        .filter(Boolean)
+    )
+  ).sort();
+const buildComparableJob = (jobData = {}) => ({
+  title: normalizeJobText(jobData.title),
+  company: normalizeJobText(jobData.company),
+  location: normalizeJobText(jobData.location),
+  type: normalizeJobText(jobData.type),
+  salary: normalizeJobText(jobData.salary),
+  description: normalizeJobText(jobData.description),
+  requiredSkills: normalizeJobSkills(jobData.requiredSkills),
+});
+const jobsMatch = (leftJob, rightJob) => {
+  const left = buildComparableJob(leftJob);
+  const right = buildComparableJob(rightJob);
+  return (
+    left.title === right.title &&
+    left.company === right.company &&
+    left.location === right.location &&
+    left.type === right.type &&
+    left.salary === right.salary &&
+    left.description === right.description &&
+    left.requiredSkills.length === right.requiredSkills.length &&
+    left.requiredSkills.every((skill, index) => skill === right.requiredSkills[index])
+  );
+};
 const normalizeVerificationStatus = (status = "") => {
   const cleanStatus = String(status || "").trim().toLowerCase();
   if (cleanStatus === "approved" || cleanStatus === "rejected" || cleanStatus === "pending") {
@@ -339,7 +370,7 @@ export const AppProvider = ({ children }) => {
     if (!isFirebaseConfigured || !auth || !db) {
       const userWithEmail = allUsers.find((item) => normalizeEmail(item.email) === normalizedEmail);
       if (!userWithEmail) {
-        await saveLoginRecord({
+        void saveLoginRecord({
           email: normalizedEmail,
           success: false,
           reason: "invalid_credentials",
@@ -348,7 +379,7 @@ export const AppProvider = ({ children }) => {
       }
 
       if (userWithEmail.password !== password) {
-        await saveLoginRecord({
+        void saveLoginRecord({
           email: normalizedEmail,
           success: false,
           reason: "wrong_password",
@@ -364,7 +395,7 @@ export const AppProvider = ({ children }) => {
         if (recruiterStatus !== "verified") {
           const blockedReason = recruiterStatus === "rejected" ? "verification_rejected" : "verification_pending";
           setUser(foundUser);
-          await saveLoginRecord({
+          void saveLoginRecord({
             email: normalizedEmail,
             success: true,
             reason: blockedReason,
@@ -375,7 +406,7 @@ export const AppProvider = ({ children }) => {
       }
 
       setUser(foundUser);
-      await saveLoginRecord({
+      void saveLoginRecord({
         email: normalizedEmail,
         success: true,
         profile: foundUser,
@@ -388,7 +419,7 @@ export const AppProvider = ({ children }) => {
       const profile = await resolveFirebaseProfile(credential.user);
       if (!profile) {
         await signOut(auth);
-        await saveLoginRecord({
+        void saveLoginRecord({
           email: normalizedEmail,
           success: false,
           reason: "profile_missing",
@@ -401,7 +432,7 @@ export const AppProvider = ({ children }) => {
         if (recruiterStatus !== "verified") {
           const blockedReason = recruiterStatus === "rejected" ? "verification_rejected" : "verification_pending";
           setUser(profile);
-          await saveLoginRecord({
+          void saveLoginRecord({
             email: normalizedEmail,
             success: true,
             reason: blockedReason,
@@ -412,7 +443,7 @@ export const AppProvider = ({ children }) => {
       }
 
       setUser(profile);
-      await saveLoginRecord({
+      void saveLoginRecord({
         email: normalizedEmail,
         success: true,
         profile,
@@ -426,16 +457,11 @@ export const AppProvider = ({ children }) => {
         error.code === "auth/invalid-email" ||
         error.code === "auth/invalid-login-credentials"
       ) {
-        let reason = "invalid_credentials";
-        try {
-          const methods = await fetchSignInMethodsForEmail(auth, normalizedEmail);
-          if (Array.isArray(methods) && methods.length > 0) {
-            reason = "wrong_password";
-          }
-        } catch {
-          // Fallback to generic invalid credentials.
-        }
-        await saveLoginRecord({
+        const reason =
+          error.code === "auth/wrong-password" || error.code === "auth/invalid-login-credentials"
+            ? "wrong_password"
+            : "invalid_credentials";
+        void saveLoginRecord({
           email: normalizedEmail,
           success: false,
           reason,
@@ -449,7 +475,7 @@ export const AppProvider = ({ children }) => {
         return { success: false, reason: "network_error", errorCode: error.code };
       }
 
-      await saveLoginRecord({
+      void saveLoginRecord({
         email: normalizedEmail,
         success: false,
         reason: "unknown_error",
@@ -861,28 +887,52 @@ export const AppProvider = ({ children }) => {
   };
 
   const addJob = async (jobData) => {
-    if (!user) return false;
+    if (!user) {
+      return { success: false, reason: "unauthorized" };
+    }
+
+    const hasDuplicateJob = jobs.some(
+      (item) => item.postedBy === user.id && jobsMatch(item, jobData)
+    );
+    if (hasDuplicateJob) {
+      return { success: false, reason: "duplicate_job" };
+    }
 
     if (!isFirebaseConfigured || !db) {
       const newJob = { ...jobData, id: Date.now().toString(), postedBy: user.id, applicants: [] };
       setJobs((prev) => [newJob, ...prev]);
-      return true;
+      return { success: true };
     }
 
-    await addDoc(collection(db, jobsCollection), {
-      ...jobData,
-      postedBy: user.id,
-      applicants: [],
-      createdAt: new Date().toISOString(),
-    });
-    return true;
+    try {
+      await addDoc(collection(db, jobsCollection), {
+        ...jobData,
+        postedBy: user.id,
+        applicants: [],
+        createdAt: new Date().toISOString(),
+      });
+      return { success: true };
+    } catch {
+      return { success: false, reason: "unknown_error" };
+    }
   };
 
   const applyToJob = async (jobId) => {
-    if (!user || user.role !== "candidate") return false;
+    if (!user || user.role !== "candidate") {
+      return { success: false, reason: "unauthorized" };
+    }
 
     const job = jobs.find((item) => item.id === jobId);
-    if (!job) return false;
+    if (!job) {
+      return { success: false, reason: "job_not_found" };
+    }
+
+    const hasExistingApplication = applications.some(
+      (item) => item.jobId === jobId && item.candidateId === user.id
+    );
+    if (hasExistingApplication) {
+      return { success: false, reason: "already_applied" };
+    }
 
     const matchedSkills = (user.skills || []).filter((skill) => (job.requiredSkills || []).includes(skill));
     const score = Math.round((matchedSkills.length / (job.requiredSkills || []).length) * 100) || 0;
@@ -897,7 +947,7 @@ export const AppProvider = ({ children }) => {
         timestamp: new Date().toISOString(),
       };
       setApplications((prev) => [...prev, newApplication]);
-      return true;
+      return { success: true };
     }
 
     const existingQuery = query(
@@ -907,7 +957,7 @@ export const AppProvider = ({ children }) => {
     );
     const existingApplications = await getDocs(existingQuery);
     if (!existingApplications.empty) {
-      return false;
+      return { success: false, reason: "already_applied" };
     }
 
     await addDoc(collection(db, applicationsCollection), {
@@ -917,7 +967,7 @@ export const AppProvider = ({ children }) => {
       score,
       timestamp: new Date().toISOString(),
     });
-    return true;
+    return { success: true };
   };
 
   const updateApplicationStatus = async (appId, status) => {

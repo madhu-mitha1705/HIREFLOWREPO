@@ -39,7 +39,10 @@ export default function Register() {
   const [companyGstProof, setCompanyGstProof] = useState("");
   const [companyLicense, setCompanyLicense] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
-  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const handleBackToModules = () => {
+    router.replace({ pathname: "/recruiter", params: { showModules: "1" } });
+  };
 
   const handleRegister = async () => {
     if (loading) return;
@@ -55,6 +58,7 @@ export default function Register() {
 
     const phoneRegex = /^\d{10,15}$/;
     const aadharRegex = /^\d{12}$/;
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     let verificationData = null;
@@ -96,6 +100,11 @@ export default function Register() {
         return;
       }
 
+      if (!panRegex.test(cleanPan)) {
+        Alert.alert("Error", "PAN card number must be in the format LLLLLNNNNL.");
+        return;
+      }
+
       if (!emailRegex.test(cleanPersonalEmail) || !emailRegex.test(cleanCompanyEmail)) {
         Alert.alert("Error", "Please enter valid email addresses.");
         return;
@@ -127,16 +136,10 @@ export default function Register() {
     };
 
     setLoading(true);
-    const startedAt = Date.now();
     let result;
     try {
       result = await register(userData);
     } finally {
-      const elapsed = Date.now() - startedAt;
-      const remaining = 300 - elapsed;
-      if (remaining > 0) {
-        await wait(remaining);
-      }
       setLoading(false);
     }
 
@@ -168,6 +171,11 @@ export default function Register() {
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBackToModules}>
+            <Ionicons name="arrow-back" size={18} color={COLORS.text} />
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+
           <View style={styles.header}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>
@@ -253,8 +261,9 @@ export default function Register() {
                 <TextInput
                   style={styles.input}
                   value={panCardNumber}
-                  onChangeText={(text) => setPanCardNumber(text.toUpperCase())}
+                  onChangeText={(text) => setPanCardNumber(text.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
                   autoCapitalize="characters"
+                  maxLength={10}
                   placeholder="PAN number"
                 />
 
@@ -320,6 +329,23 @@ const styles = StyleSheet.create({
     maxWidth: 560,
     width: "100%",
     alignSelf: "center",
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: COLORS.card,
+    ...SHADOWS.small,
+  },
+  backButtonText: {
+    color: COLORS.text,
+    fontSize: SIZES.body,
+    fontWeight: "600",
   },
   header: {
     alignItems: "center",

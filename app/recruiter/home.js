@@ -34,9 +34,9 @@ return (
 </TouchableOpacity>
 </Link>
 
-<Link href="/recruiter/applicationList" asChild>
+<Link href="/recruiter/postedJobs" asChild>
 <TouchableOpacity style={styles.buttonSecondary}>
-<Text style={styles.buttonSecondaryText}>Application Lists</Text>
+<Text style={styles.buttonSecondaryText}>My Posted Jobs</Text>
 </TouchableOpacity>
 </Link>
 

@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, TextInput, Alert } from "react-native";
+import { useRouter } from "expo-router";
 import { useApp } from "../../store/context";
 import { COLORS, SIZES, SHADOWS } from "../../constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function CandidateDashboard() {
+  const router = useRouter();
   const { jobs, user, applyToJob } = useApp();
   const [search, setSearch] = useState("");
+  const [applicationModal, setApplicationModal] = useState(null);
   const normalizedSearch = String(search || "").toLowerCase();
 
   const filteredJobs = jobs.filter(
@@ -20,12 +23,16 @@ export default function CandidateDashboard() {
   );
 
   const handleApply = async (jobId) => {
-    const applied = await applyToJob(jobId);
-    if (!applied) {
-      Alert.alert("Info", "You already applied to this job or submission failed.");
+    const result = await applyToJob(jobId);
+    if (!result?.success) {
+      if (result?.reason === "already_applied") {
+        setApplicationModal("already_applied");
+        return;
+      }
+      Alert.alert("Info", "Unable to apply right now.");
       return;
     }
-    Alert.alert("Success", "Application Submitted!");
+    setApplicationModal("success");
   };
 
   const getMatchPercentage = (jobSkills) => {
@@ -100,6 +107,33 @@ export default function CandidateDashboard() {
         contentContainerStyle={styles.list}
         ListEmptyComponent={<Text style={styles.empty}>No jobs found.</Text>}
       />
+
+      {applicationModal ? (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {applicationModal === "success" ? "Successfully applied" : "Already applied"}
+            </Text>
+            <Text style={styles.modalMessage}>
+              {applicationModal === "success"
+                ? "Successfully applied, check for updates."
+                : "You have already applied to this job."}
+            </Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                const nextAction = applicationModal;
+                setApplicationModal(null);
+                if (nextAction === "success") {
+                  router.push("/candidate/applications");
+                }
+              }}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -217,5 +251,46 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 20,
     color: COLORS.textLight,
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    padding: 18,
+    ...SHADOWS.small,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: COLORS.textLight,
+    marginBottom: 16,
+  },
+  modalButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  modalButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
   },
 });

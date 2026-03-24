@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../store/context";
@@ -25,6 +25,7 @@ const getVideoName = (uri = "") => {
 
 export default function CandidateProfile() {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const { user, logout, updateCandidateProfile } = useApp();
 
   const [education, setEducation] = useState("");
@@ -43,6 +44,12 @@ export default function CandidateProfile() {
     setVideoResume(user.videoResume || null);
     setVideoResumeUrl(/^https?:\/\//i.test(String(user.videoResume || "")) ? String(user.videoResume) : "");
   }, [user]);
+
+  useEffect(() => {
+    if (params.savedAt) {
+      setSaveSuccessVisible(true);
+    }
+  }, [params.savedAt]);
 
   if (user && user.role !== "candidate") {
     return <Redirect href={{ pathname: "/login", params: { role: "candidate" } }} />;
@@ -148,7 +155,10 @@ export default function CandidateProfile() {
         return;
       }
 
-      setSaveSuccessVisible(true);
+      router.replace({
+        pathname: "/candidate/profile",
+        params: { savedAt: String(Date.now()) },
+      });
     } finally {
       const elapsed = Date.now() - startedAt;
       const remaining = 300 - elapsed;
@@ -283,13 +293,17 @@ export default function CandidateProfile() {
             <Text style={styles.modalMessage}>Your candidate profile has been updated.</Text>
             <TouchableOpacity
               style={styles.modalPrimaryButton}
-              onPress={() => setSaveSuccessVisible(false)}
+              onPress={() => {
+                setSaveSuccessVisible(false);
+                router.replace("/candidate/profile");
+              }}
             >
               <Text style={styles.modalPrimaryButtonText}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : null}
+
     </View>
   );
 }

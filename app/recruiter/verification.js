@@ -72,6 +72,7 @@ export default function RecruiterVerification() {
 
     const phoneRegex = /^\d{10}$/;
     const aadharRegex = /^\d{12}$/;
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!phoneRegex.test(cleanPhone)) {
@@ -86,6 +87,11 @@ export default function RecruiterVerification() {
 
     if (!aadharRegex.test(cleanAadharNumber)) {
       Alert.alert("Error", "Aadhar number should be exactly 12 digits.");
+      return;
+    }
+
+    if (!panRegex.test(cleanPanCardNumber)) {
+      Alert.alert("Error", "PAN card number must be in the format LLLLLNNNNL.");
       return;
     }
 
@@ -201,7 +207,7 @@ export default function RecruiterVerification() {
               placeholder="e.g. ABCDE1234F"
               placeholderTextColor="#9CA3AF"
               value={panCardNumber}
-              onChangeText={(text) => setPanCardNumber(text.toUpperCase())}
+              onChangeText={(text) => setPanCardNumber(text.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
               autoCapitalize="characters"
               maxLength={10}
             />
@@ -222,7 +228,7 @@ export default function RecruiterVerification() {
               placeholder="Enter company contact number"
               placeholderTextColor="#9CA3AF"
               value={companyContactNumber}
-              onChangeText={(text) => setCompanyContactNumber(text.replace(/\D/g, ""))}
+              onChangeText={(text) => setCompanyContactNumber(text.replace(/\D/g, "").slice(0,15))}
               keyboardType="number-pad"
             />
 

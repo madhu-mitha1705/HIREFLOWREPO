@@ -19,7 +19,6 @@ export default function Login() {
   const nextParam = Array.isArray(params.next) ? params.next[0] : params.next;
   const emailParam = Array.isArray(params.email) ? params.email[0] : params.email;
   const role = roleParam || "candidate";
-  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   useEffect(() => {
     if (emailParam) {
@@ -47,6 +46,10 @@ export default function Login() {
     }
   }, [router, user]);
 
+  const handleBackToModules = () => {
+    router.replace({ pathname: "/recruiter", params: { showModules: "1" } });
+  };
+
   const handleLogin = async () => {
     if (loading) return;
 
@@ -59,16 +62,10 @@ export default function Login() {
     }
 
     setLoading(true);
-    const startedAt = Date.now();
     let result;
     try {
       result = await login(cleanEmail, cleanPassword);
     } finally {
-      const elapsed = Date.now() - startedAt;
-      const remaining = 300 - elapsed;
-      if (remaining > 0) {
-        await wait(remaining);
-      }
       setLoading(false);
     }
 
@@ -114,6 +111,11 @@ export default function Login() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <View style={styles.content}>
+        <TouchableOpacity style={styles.backButton} onPress={handleBackToModules}>
+          <Ionicons name="arrow-back" size={18} color={COLORS.text} />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+
         <View style={styles.header}>
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>
@@ -186,6 +188,23 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     width: "100%",
     alignSelf: "center",
+  },
+  backButton: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: COLORS.card,
+    ...SHADOWS.small,
+  },
+  backButtonText: {
+    color: COLORS.text,
+    fontSize: SIZES.body,
+    fontWeight: "600",
   },
   header: {
     alignItems: "center",

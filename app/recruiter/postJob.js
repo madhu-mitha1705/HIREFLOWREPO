@@ -18,6 +18,7 @@ export default function PostJob() {
   const router = useRouter();
   const { user, addJob } = useApp();
   const [loading, setLoading] = useState(false);
+  const [jobStatusModal, setJobStatusModal] = useState(null);
 
   const [title, setTitle] = useState("");
   const [company, setCompany] = useState(user?.company || "");
@@ -41,12 +42,20 @@ export default function PostJob() {
   const handleSubmit = async () => {
     if (loading) return;
 
-    if (!title || !company || !location || !type || !requiredSkills) {
+    const cleanTitle = title.trim();
+    const cleanCompany = company.trim();
+    const cleanLocation = location.trim();
+    const cleanType = type.trim();
+    const cleanSalary = salary.trim();
+    const cleanRequiredSkills = requiredSkills.trim();
+    const cleanDescription = description.trim();
+
+    if (!cleanTitle || !cleanCompany || !cleanLocation || !cleanType || !cleanRequiredSkills) {
       Alert.alert("Error", "Please fill all required fields.");
       return;
     }
 
-    const skills = requiredSkills
+    const skills = cleanRequiredSkills
       .split(",")
       .map((skill) => skill.trim())
       .filter(Boolean);
@@ -58,16 +67,16 @@ export default function PostJob() {
 
     setLoading(true);
     const startedAt = Date.now();
-    let posted;
+    let result;
     try {
-      posted = await addJob({
-        title,
-        company,
-        location,
-        type,
-        salary: salary || "Not disclosed",
+      result = await addJob({
+        title: cleanTitle,
+        company: cleanCompany,
+        location: cleanLocation,
+        type: cleanType,
+        salary: cleanSalary || "Not disclosed",
         requiredSkills: skills,
-        description: description || "No description provided",
+        description: cleanDescription || "No description provided",
       });
     } finally {
       const elapsed = Date.now() - startedAt;
@@ -78,17 +87,16 @@ export default function PostJob() {
       setLoading(false);
     }
 
-    if (!posted) {
+    if (!result?.success) {
+      if (result?.reason === "duplicate_job") {
+        setJobStatusModal("duplicate");
+        return;
+      }
       Alert.alert("Error", "Unable to post job right now.");
       return;
     }
 
-    Alert.alert("Success", "Job posted successfully.", [
-      {
-        text: "OK",
-        onPress: () => router.push("/recruiter/applicationList"),
-      },
-    ]);
+    setJobStatusModal("success");
   };
 
   return (
@@ -172,6 +180,33 @@ export default function PostJob() {
           </View>
         </View>
       </ScrollView>
+
+      {jobStatusModal ? (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>
+              {jobStatusModal === "success" ? "Job Posted" : "Already Posted"}
+            </Text>
+            <Text style={styles.modalMessage}>
+              {jobStatusModal === "success"
+                ? "Job Posted"
+                : "This job has already been posted."}
+            </Text>
+            <TouchableOpacity
+              style={styles.modalButton}
+              onPress={() => {
+                const nextAction = jobStatusModal;
+                setJobStatusModal(null);
+                if (nextAction === "success") {
+                  router.replace("/recruiter/home");
+                }
+              }}
+            >
+              <Text style={styles.modalButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -239,6 +274,47 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   buttonText: {
+    color: "#fff",
+    fontSize: SIZES.body,
+    fontWeight: "700",
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    padding: 18,
+    ...SHADOWS.small,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.text,
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: SIZES.body,
+    color: COLORS.textLight,
+    marginBottom: 16,
+  },
+  modalButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  modalButtonText: {
     color: "#fff",
     fontSize: SIZES.body,
     fontWeight: "700",

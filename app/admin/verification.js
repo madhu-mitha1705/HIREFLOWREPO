@@ -49,6 +49,16 @@ export default function AdminVerifications() {
     return Array.from(byRecruiterId.values());
   }, [allUsers, verificationRequests]);
 
+  const pendingRequests = useMemo(
+    () => mergedRequests.filter((request) => getStatus(request.status) === "pending"),
+    [mergedRequests]
+  );
+
+  const reviewedRequests = useMemo(
+    () => mergedRequests.filter((request) => getStatus(request.status) !== "pending"),
+    [mergedRequests]
+  );
+
   if (user && user.role !== "admin") {
     return <Redirect href={{ pathname: "/login", params: { role: "admin" } }} />;
   }
@@ -60,16 +70,6 @@ export default function AdminVerifications() {
       </View>
     );
   }
-
-  const pendingRequests = useMemo(
-    () => mergedRequests.filter((request) => getStatus(request.status) === "pending"),
-    [mergedRequests]
-  );
-
-  const reviewedRequests = useMemo(
-    () => mergedRequests.filter((request) => getStatus(request.status) !== "pending"),
-    [mergedRequests]
-  );
 
   const handleReview = async (requestId, decision) => {
     const ok = await reviewRecruiterVerification(requestId, decision);
