@@ -19,6 +19,7 @@ export default function Login() {
   const nextParam = Array.isArray(params.next) ? params.next[0] : params.next;
   const emailParam = Array.isArray(params.email) ? params.email[0] : params.email;
   const role = roleParam || "candidate";
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   useEffect(() => {
     if (emailParam) {
@@ -47,6 +48,8 @@ export default function Login() {
   }, [router, user]);
 
   const handleLogin = async () => {
+    if (loading) return;
+
     const cleanEmail = email.trim();
     const cleanPassword = password.trim();
 
@@ -56,8 +59,18 @@ export default function Login() {
     }
 
     setLoading(true);
-    const result = await login(cleanEmail, cleanPassword);
-    setLoading(false);
+    const startedAt = Date.now();
+    let result;
+    try {
+      result = await login(cleanEmail, cleanPassword);
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = 300 - elapsed;
+      if (remaining > 0) {
+        await wait(remaining);
+      }
+      setLoading(false);
+    }
 
     if (result.success) {
       if (nextParam) {
@@ -139,7 +152,7 @@ export default function Login() {
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleLogin} disabled={loading}>
             <Text style={styles.buttonText}>{loading ? "Please wait..." : "Login"}</Text>
           </TouchableOpacity>
         </View>
@@ -237,6 +250,9 @@ const styles = StyleSheet.create({
     marginTop: 25,
     marginBottom: 10,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: "#fff",

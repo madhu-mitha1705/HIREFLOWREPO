@@ -945,7 +945,7 @@ export const AppProvider = ({ children }) => {
       videoResume: profileData.videoResume || null,
     };
 
-    if (!isFirebaseConfigured || !db || !storage) {
+    if (!isFirebaseConfigured || !db) {
       setAllUsers((prev) =>
         prev.map((item) => (item.id === user.id ? { ...item, ...payload } : item))
       );
@@ -956,8 +956,8 @@ export const AppProvider = ({ children }) => {
     try {
       const nextPayload = { ...payload };
 
-      // Upload fresh local video files to Firebase Storage and save the download URL.
-      if (nextPayload.videoResume && !isRemoteUrl(nextPayload.videoResume)) {
+      // Upload fresh local video files to Firebase Storage when available.
+      if (storage && nextPayload.videoResume && !isRemoteUrl(nextPayload.videoResume)) {
         try {
           const resumeUri = String(nextPayload.videoResume);
           const uriParts = resumeUri.split(".");

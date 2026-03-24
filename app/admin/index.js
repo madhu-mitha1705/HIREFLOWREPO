@@ -1,6 +1,5 @@
-import { useEffect } from "react";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../store/context";
 import { COLORS, SIZES, SHADOWS } from "../../constants/theme";
@@ -10,11 +9,17 @@ export default function AdminDashboard() {
   const { user, allUsers, jobs, applications, verificationRequests, logout } = useApp();
   const getStatus = (status) => (status || "pending").toString().trim().toLowerCase();
 
-  useEffect(() => {
-    if (!user || user.role !== "admin") {
-      router.replace({ pathname: "/login", params: { role: "admin" } });
-    }
-  }, [router, user]);
+  if (user && user.role !== "admin") {
+    return <Redirect href={{ pathname: "/login", params: { role: "admin" } }} />;
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading admin dashboard...</Text>
+      </View>
+    );
+  }
 
   const pendingRequests = verificationRequests.filter((request) => getStatus(request.status) === "pending");
 
@@ -33,10 +38,10 @@ export default function AdminDashboard() {
   const renderUser = ({ item }) => (
     <View style={styles.userRow}>
       <View style={styles.userInfo}>
-        <Text style={styles.userName}>{item.name}</Text>
-        <Text style={styles.userRole}>{item.role.toUpperCase()}</Text>
+        <Text style={styles.userName}>{item?.name || "Unknown User"}</Text>
+        <Text style={styles.userRole}>{String(item?.role || "unknown").toUpperCase()}</Text>
       </View>
-      <Text style={styles.userEmail}>{item.email}</Text>
+      <Text style={styles.userEmail}>{item?.email || "-"}</Text>
     </View>
   );
 
@@ -74,7 +79,7 @@ export default function AdminDashboard() {
       <Text style={styles.sectionTitle}>Recent Users</Text>
       <FlatList
         data={allUsers}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => String(item?.id || `user-${index}`)}
         renderItem={renderUser}
         contentContainerStyle={styles.list}
       />
@@ -86,6 +91,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    color: COLORS.textLight,
+    fontSize: SIZES.body,
   },
   header: {
     padding: SIZES.padding,

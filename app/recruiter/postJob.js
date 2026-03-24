@@ -26,6 +26,7 @@ export default function PostJob() {
   const [salary, setSalary] = useState("");
   const [requiredSkills, setRequiredSkills] = useState("");
   const [description, setDescription] = useState("");
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   useEffect(() => {
     if (!user || user.role !== "recruiter") {
@@ -38,6 +39,8 @@ export default function PostJob() {
   }, [router, user]);
 
   const handleSubmit = async () => {
+    if (loading) return;
+
     if (!title || !company || !location || !type || !requiredSkills) {
       Alert.alert("Error", "Please fill all required fields.");
       return;
@@ -54,16 +57,26 @@ export default function PostJob() {
     }
 
     setLoading(true);
-    const posted = await addJob({
-      title,
-      company,
-      location,
-      type,
-      salary: salary || "Not disclosed",
-      requiredSkills: skills,
-      description: description || "No description provided",
-    });
-    setLoading(false);
+    const startedAt = Date.now();
+    let posted;
+    try {
+      posted = await addJob({
+        title,
+        company,
+        location,
+        type,
+        salary: salary || "Not disclosed",
+        requiredSkills: skills,
+        description: description || "No description provided",
+      });
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = 300 - elapsed;
+      if (remaining > 0) {
+        await wait(remaining);
+      }
+      setLoading(false);
+    }
 
     if (!posted) {
       Alert.alert("Error", "Unable to post job right now.");
@@ -153,7 +166,7 @@ export default function PostJob() {
               multiline
             />
 
-            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+            <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSubmit} disabled={loading}>
               <Text style={styles.buttonText}>{loading ? "Posting..." : "Post Job"}</Text>
             </TouchableOpacity>
           </View>
@@ -221,6 +234,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 14,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: "#fff",

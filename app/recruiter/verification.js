@@ -29,6 +29,7 @@ export default function RecruiterVerification() {
   const [companyGstProof, setCompanyGstProof] = useState("");
   const [companyLicense, setCompanyLicense] = useState("");
   const [companyGmail, setCompanyGmail] = useState("");
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   if (!user || user.role !== "recruiter" || shouldGoToLogin) {
     return <Redirect href={{ pathname: "/login", params: { role: "recruiter" } }} />;
@@ -94,20 +95,30 @@ export default function RecruiterVerification() {
     }
 
     setLoading(true);
-    const submitted = await submitRecruiterVerification({
-      fullName: cleanFullName,
-      phone: cleanPhone,
-      personalAddress: cleanPersonalAddress,
-      personalGmail: cleanPersonalGmail,
-      aadharNumber: cleanAadharNumber,
-      panCardNumber: cleanPanCardNumber,
-      companyName: cleanCompanyName,
-      companyContactNumber: cleanCompanyContactNumber,
-      companyGstProof: cleanCompanyGstProof,
-      companyLicense: cleanCompanyLicense,
-      companyGmail: cleanCompanyGmail,
-    });
-    setLoading(false);
+    const startedAt = Date.now();
+    let submitted;
+    try {
+      submitted = await submitRecruiterVerification({
+        fullName: cleanFullName,
+        phone: cleanPhone,
+        personalAddress: cleanPersonalAddress,
+        personalGmail: cleanPersonalGmail,
+        aadharNumber: cleanAadharNumber,
+        panCardNumber: cleanPanCardNumber,
+        companyName: cleanCompanyName,
+        companyContactNumber: cleanCompanyContactNumber,
+        companyGstProof: cleanCompanyGstProof,
+        companyLicense: cleanCompanyLicense,
+        companyGmail: cleanCompanyGmail,
+      });
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = 300 - elapsed;
+      if (remaining > 0) {
+        await wait(remaining);
+      }
+      setLoading(false);
+    }
 
     if (!submitted) {
       Alert.alert("Error", "Unable to submit verification right now.");
@@ -244,7 +255,7 @@ export default function RecruiterVerification() {
               keyboardType="email-address"
             />
 
-            <TouchableOpacity style={styles.button} onPress={handleSubmit} disabled={loading}>
+            <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSubmit} disabled={loading}>
               <Text style={styles.buttonText}>{loading ? "Submitting..." : "Verify"}</Text>
             </TouchableOpacity>
           </View>
@@ -324,6 +335,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
     marginTop: 22,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: "#fff",

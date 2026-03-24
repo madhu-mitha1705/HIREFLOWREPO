@@ -7,11 +7,16 @@ import { Ionicons } from "@expo/vector-icons";
 export default function CandidateDashboard() {
   const { jobs, user, applyToJob } = useApp();
   const [search, setSearch] = useState("");
+  const normalizedSearch = String(search || "").toLowerCase();
 
   const filteredJobs = jobs.filter(
     (job) =>
-      job.title.toLowerCase().includes(search.toLowerCase()) ||
-      job.company.toLowerCase().includes(search.toLowerCase())
+      String(job?.title || "")
+        .toLowerCase()
+        .includes(normalizedSearch) ||
+      String(job?.company || "")
+        .toLowerCase()
+        .includes(normalizedSearch)
   );
 
   const handleApply = async (jobId) => {
@@ -24,20 +29,23 @@ export default function CandidateDashboard() {
   };
 
   const getMatchPercentage = (jobSkills) => {
+    const safeJobSkills = Array.isArray(jobSkills) ? jobSkills : [];
     if (!user || !user.skills) return 0;
-    const matchCount = user.skills.filter((skill) => jobSkills.includes(skill)).length;
-    return Math.round((matchCount / jobSkills.length) * 100);
+    if (safeJobSkills.length === 0) return 0;
+    const matchCount = user.skills.filter((skill) => safeJobSkills.includes(skill)).length;
+    return Math.round((matchCount / safeJobSkills.length) * 100);
   };
 
   const renderItem = ({ item }) => {
-    const match = getMatchPercentage(item.requiredSkills);
+    const requiredSkills = Array.isArray(item?.requiredSkills) ? item.requiredSkills : [];
+    const match = getMatchPercentage(requiredSkills);
 
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
           <View>
-            <Text style={styles.jobTitle}>{item.title}</Text>
-            <Text style={styles.company}>{item.company}</Text>
+            <Text style={styles.jobTitle}>{item?.title || "Untitled Job"}</Text>
+            <Text style={styles.company}>{item?.company || "Unknown Company"}</Text>
           </View>
           <View style={[styles.matchBadge, { backgroundColor: match > 70 ? COLORS.secondary : COLORS.warning }]}>
             <Text style={styles.matchText}>{match}% Match</Text>
@@ -46,22 +54,22 @@ export default function CandidateDashboard() {
 
         <View style={styles.detailsRow}>
           <Text style={styles.detailText}>
-            <Ionicons name="location-outline" /> {item.location}
+            <Ionicons name="location-outline" /> {item?.location || "Not specified"}
           </Text>
           <Text style={styles.detailText}>
-            <Ionicons name="cash-outline" /> {item.salary}
+            <Ionicons name="cash-outline" /> {item?.salary || "Not specified"}
           </Text>
         </View>
 
         <View style={styles.skillsRow}>
-          {item.requiredSkills.map((skill) => (
+          {requiredSkills.map((skill) => (
             <View key={skill} style={styles.skillTag}>
               <Text style={styles.skillText}>{skill}</Text>
             </View>
           ))}
         </View>
 
-        <TouchableOpacity style={styles.applyButton} onPress={() => handleApply(item.id)}>
+        <TouchableOpacity style={styles.applyButton} onPress={() => handleApply(item?.id)} disabled={!item?.id}>
           <Text style={styles.applyText}>Apply Now</Text>
         </TouchableOpacity>
       </View>
@@ -87,7 +95,7 @@ export default function CandidateDashboard() {
 
       <FlatList
         data={filteredJobs}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => String(item?.id || `job-${index}`)}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
         ListEmptyComponent={<Text style={styles.empty}>No jobs found.</Text>}

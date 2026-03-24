@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useApp } from "../../store/context";
 import { COLORS, SIZES, SHADOWS } from "../../constants/theme";
@@ -49,11 +49,17 @@ export default function AdminVerifications() {
     return Array.from(byRecruiterId.values());
   }, [allUsers, verificationRequests]);
 
-  useEffect(() => {
-    if (!user || user.role !== "admin") {
-      router.replace({ pathname: "/login", params: { role: "admin" } });
-    }
-  }, [router, user]);
+  if (user && user.role !== "admin") {
+    return <Redirect href={{ pathname: "/login", params: { role: "admin" } }} />;
+  }
+
+  if (!user) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading verifications...</Text>
+      </View>
+    );
+  }
 
   const pendingRequests = useMemo(
     () => mergedRequests.filter((request) => getStatus(request.status) === "pending"),
@@ -128,7 +134,7 @@ export default function AdminVerifications() {
 
       <FlatList
         data={pendingRequests}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => String(item?.id || `verification-${index}`)}
         renderItem={({ item }) => renderRequest({ item, pending: true })}
         contentContainerStyle={styles.list}
         ListHeaderComponent={
@@ -162,6 +168,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    color: COLORS.textLight,
+    fontSize: SIZES.body,
   },
   header: {
     padding: SIZES.padding,

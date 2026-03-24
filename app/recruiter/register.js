@@ -39,6 +39,7 @@ export default function Register() {
   const [companyGstProof, setCompanyGstProof] = useState("");
   const [companyLicense, setCompanyLicense] = useState("");
   const [companyEmail, setCompanyEmail] = useState("");
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const handleRegister = async () => {
     if (loading) return;
@@ -126,8 +127,18 @@ export default function Register() {
     };
 
     setLoading(true);
-    const result = await register(userData);
-    setLoading(false);
+    const startedAt = Date.now();
+    let result;
+    try {
+      result = await register(userData);
+    } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = 300 - elapsed;
+      if (remaining > 0) {
+        await wait(remaining);
+      }
+      setLoading(false);
+    }
 
     if (!result.success) {
       if (result.reason === "email_in_use") {
@@ -276,7 +287,7 @@ export default function Register() {
               </>
             ) : null}
 
-            <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
+            <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleRegister} disabled={loading}>
               <Text style={styles.buttonText}>{loading ? "Please wait..." : "Sign Up"}</Text>
             </TouchableOpacity>
           </View>
@@ -388,6 +399,9 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 8,
     alignItems: "center",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
   },
   buttonText: {
     color: "#fff",

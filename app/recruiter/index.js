@@ -1,14 +1,17 @@
 import { useEffect } from "react";
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { COLORS, SIZES, SHADOWS } from "../../constants/theme";
 import { useApp } from "../../store/context";
 
 export default function Landing() {
 const router = useRouter();
+const { showModules } = useLocalSearchParams();
 const { user, logout } = useApp();
+const forceModuleSelect = String(showModules || "") === "1";
 
 useEffect(() => {
+if (forceModuleSelect) return;
 if (user?.role === "admin") {
 router.replace("/admin");
 return;
@@ -27,7 +30,7 @@ await logout();
 router.replace("/");
 };
 
-if (user?.role === "recruiter" && !user?.isVerified) {
+if (user?.role === "recruiter" && !user?.isVerified && !forceModuleSelect) {
 return (
 <View style={styles.pendingContainer}>
 <View style={styles.pendingCard}>
